@@ -23,6 +23,7 @@ object DefaultExprTests extends TestSuite{
       eval("local obj = {}; (1 + obj.nonExistent) default 2").value ==> 2
       eval("local obj = { a: 1 }; obj.nonExistent default obj.a default obj.anotherNonExistent").value ==> 1
       eval("local obj = { a: 1 }; obj.nonExistent default obj.anotherNonExistent default obj.a").value ==> 1
+      eval("local obj = { a: 1 }; (obj.nonExistent + 1) default 2").value ==> 2
     }
   }
 }
