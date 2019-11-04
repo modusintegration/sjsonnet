@@ -266,6 +266,10 @@ class Evaluator(parseCache: collection.mutable.Map[String, fastparse.Parsed[(Exp
   def visitBinaryOp(offset: Int, lhs: Expr, op: BinaryOp.Op, rhs: Expr)
                    (implicit scope: ValScope, fileScope: FileScope) = {
     op match {
+      case Expr.BinaryOp.`default` =>
+        try visitExpr(lhs)
+        catch { case e: Error => visitExpr(rhs) }
+
       // && and || are handled specially because unlike the other operators,
       // these short-circuit during evaluation in some cases when the LHS is known.
       case Expr.BinaryOp.`&&` | Expr.BinaryOp.`||` =>

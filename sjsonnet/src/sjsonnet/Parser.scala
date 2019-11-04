@@ -13,6 +13,7 @@ import scala.annotation.switch
   */
 object Parser{
   val precedenceTable = Seq(
+    Seq("default"),
     Seq("*", "/", "%"),
     Seq("+", "-"),
     Seq("<<", ">>"),
@@ -173,6 +174,7 @@ object Parser{
                   case "|" => Expr.BinaryOp.`|`
                   case "&&" => Expr.BinaryOp.`&&`
                   case "||" => Expr.BinaryOp.`||`
+                  case "default" => Expr.BinaryOp.`default`
                 }
                 result = Expr.BinaryOp(offset, result, op1, rhs)
                 true
@@ -335,7 +337,7 @@ object Parser{
   def binaryop[_: P] = P(
     StringIn(
       "<<", ">>", "<=", ">=", "in", "==", "!=", "&&", "||",
-      "*", "/", "%", "+", "-", "<", ">", "&", "^", "|"
+      "*", "/", "%", "+", "-", "<", ">", "&", "^", "|", "default"
     )
 
   ).!
