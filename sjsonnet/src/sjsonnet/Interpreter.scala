@@ -13,7 +13,8 @@ class Interpreter(parseCache: collection.mutable.Map[String, fastparse.Parsed[(E
                   extVars: Map[String, ujson.Value],
                   tlaVars: Map[String, ujson.Value],
                   wd: Path,
-                  importer: (Path, String) => Option[(Path, String)]) {
+                  importer: (Path, String) => Option[(Path, String)],
+                  preserveOrder: Boolean = false) {
 
   val evaluator = new Evaluator(
     parseCache,
@@ -60,7 +61,7 @@ class Interpreter(parseCache: collection.mutable.Map[String, fastparse.Parsed[(E
         case x => x
       }
       json <-
-        try Right(Materializer.apply0(res, visitor)(evaluator))
+        try Right(Materializer.apply0(res, visitor, preserveOrder)(evaluator))
         catch{
           case Error.Delegate(msg) => Left(msg)
           case e: Throwable =>
