@@ -10,12 +10,12 @@ import upickle.core.Visitor
   * to `String`s
   */
 object Materializer {
-  def apply(v: Val)(implicit evaluator: EvalScope): ujson.Value = apply0(v, ujson.Value)
-  def stringify(v: Val)(implicit evaluator: EvalScope): String = {
-    apply0(v, new sjsonnet.Renderer()).toString
+  def apply(v: Val, preserveOrder: Boolean = false)(implicit evaluator: EvalScope): ujson.Value = apply0(v, ujson.Value, preserveOrder)
+  def stringify(v: Val, preserveOrder: Boolean = false)(implicit evaluator: EvalScope): String = {
+    apply0(v, new sjsonnet.Renderer(), preserveOrder).toString
   }
 
-  def apply0[T](v: Val, visitor: Visitor[T, T])
+  def apply0[T](v: Val, visitor: Visitor[T, T], preserveOrder: Boolean = false)
                (implicit evaluator: EvalScope): T = try {
     v match {
       case Val.True => visitor.visitTrue(-1)
@@ -27,7 +27,7 @@ object Materializer {
         val arrVisitor = visitor.visitArray(xs.length, -1)
         for(x <- xs) {
           arrVisitor.visitValue(
-            apply0(x.force, visitor),
+            apply0(x.force, visitor, preserveOrder),
             -1
           )
         }
@@ -36,7 +36,11 @@ object Materializer {
       case obj: Val.Obj =>
         obj.triggerAllAsserts(obj)
 
-        val keys = obj.getVisibleKeys().toArray.sortBy(_._1)
+        var keys = obj.getVisibleKeys(preserveOrder).toArray
+        if (preserveOrder == false) {
+          keys = keys.sortBy(_._1)
+        }
+
         val objVisitor = visitor.visitObject(keys.length , -1)
 
         for(t <- keys) {
@@ -46,7 +50,8 @@ object Materializer {
             objVisitor.visitValue(
               apply0(
                 obj.value(k, -1)(evaluator.emptyMaterializeFileScope, implicitly),
-                visitor
+                visitor,
+                preserveOrder
               ),
               -1
             )
@@ -57,7 +62,8 @@ object Materializer {
       case f: Val.Func =>
         apply0(
           f.apply(Nil, "(memory)", -1)(evaluator.emptyMaterializeFileScope, implicitly),
-          visitor
+          visitor,
+          preserveOrder
         )
     }
 

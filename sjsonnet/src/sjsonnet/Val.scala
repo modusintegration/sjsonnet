@@ -101,8 +101,8 @@ object Val{
       for(t <- value0) output(t._1, t._2.visibility)
     }
 
-    def getVisibleKeys() = {
-      val mapping = collection.mutable.Map.empty[String, Boolean]
+    def getVisibleKeys(preserveOrder: Boolean = false) = {
+      val mapping = if (preserveOrder) collection.mutable.LinkedHashMap.empty[String, Boolean] else collection.mutable.Map.empty[String, Boolean]
       foreachVisibleKey{ (k, sep) =>
         (mapping.get(k), sep) match{
           case (None, Visibility.Hidden) => mapping(k) = true
