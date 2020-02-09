@@ -1,19 +1,21 @@
 package sjsonnet
 
-import java.io.StringWriter
-import java.nio.charset.StandardCharsets.UTF_8
-import java.util.Base64
-import java.util.zip.GZIPOutputStream
-
 import sjsonnet.Expr.Member.Visibility
 import sjsonnet.Expr.{BinaryOp, False, Params}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.compat._
 import sjsonnet.Std.builtinWithDefaults
+import sjsonnet.Val.Obj
 import ujson.Value
 
+import scala.collection.mutable
 import util.control.Breaks._
+
+import java.io.StringWriter
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.Base64
+import java.util.zip.GZIPOutputStream
 
 /**
   * The Jsonnet standard library, `std`, with each builtin function implemented
@@ -250,14 +252,15 @@ object Std {
     builtin("mapWithKey", "func", "obj"){ (ev, fs, func: Applyer, obj: Val.Obj) =>
       val allKeys = obj.getVisibleKeys()
       new Val.Obj(
-        allKeys.map{ k =>
-          k._1 -> (Val.Obj.Member(false, Visibility.Normal, (self: Val.Obj, sup: Option[Val.Obj], _, _) =>
+        for ((k, v) <- allKeys) yield (
+          k,
+          (Val.Obj.Member(false, Visibility.Normal, (self: Val.Obj, sup: Option[Val.Obj], _, _) =>
             func.apply(
-              Val.Lazy(Val.Str(k._1)),
-              Val.Lazy(obj.value(k._1, -1)(fs,ev))
+              Val.Lazy(Val.Str(k)),
+              Val.Lazy(obj.value(k, -1)(new FileScope(null, Map.empty),ev))
             )
           ))
-        }.toMap,
+        ),
         _ => (),
         None
       )
@@ -675,10 +678,7 @@ object Std {
             val transformedValue: Seq[Val.Lazy] = values.map(v => Val.Lazy(recursiveTransform(v))).toSeq
             Val.Arr(transformedValue)
           case ujson.Obj(valueMap) =>
-            val transformedValue = valueMap
-              .mapValues { v =>
-                Val.Obj.Member(false, Expr.Member.Visibility.Normal, (_, _, _, _) => recursiveTransform(v))
-              }.toMap
+            val transformedValue: mutable.LinkedHashMap[String, Val.Obj.Member] = for ((k, v) <- valueMap) yield (k, Val.Obj.Member(false, Expr.Member.Visibility.Normal, (_, _, _, _) => recursiveTransform(v)))
             new Val.Obj(transformedValue , (x: Val.Obj) => (), None)
         }
       }
@@ -696,13 +696,13 @@ object Std {
       }
       def rec(x: Val): Val = x match{
         case o: Val.Obj =>
-          val bindings = for{
+          val bindings: mutable.LinkedHashMap[String, Val.Obj.Member] = for{
             (k, hidden) <- o.getVisibleKeys()
             if !hidden
             v = rec(o.value(k, -1)(fs, ev))
             if filter(v)
           }yield (k, Val.Obj.Member(false, Visibility.Normal, (_, _, _, _) => v))
-          new Val.Obj(bindings.toMap, _ => (), None)
+          new Val.Obj(bindings, _ => (), None)
         case a: Val.Arr =>
           Val.Arr(a.value.map(x => rec(x.force)).filter(filter).map(Val.Lazy(_)))
         case _ => x
@@ -736,9 +736,10 @@ object Std {
       }
     )
   )
-  val Std = new Val.Obj(
+
+  val lhm: mutable.LinkedHashMap[String, Val.Obj.Member] = mutable.LinkedHashMap[String, Val.Obj.Member] (
     functions
-      .map{
+      .map {
         case (k, v) =>
           (
             k,
@@ -748,8 +749,7 @@ object Std {
               (self: Val.Obj, sup: Option[Val.Obj], _, _) => v
             )
           )
-      }
-      .toMap ++ Seq(
+      }.seq ++ Seq(
       (
         "thisFile",
         Val.Obj.Member(
@@ -760,8 +760,11 @@ object Std {
           },
           cached = false
         )
-      )
-    ),
+      )): _*
+  )
+
+  val Std = new Val.Obj(
+    lhm,
     _ => (),
     None
   )

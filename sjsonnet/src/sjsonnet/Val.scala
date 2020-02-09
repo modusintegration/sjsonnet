@@ -73,7 +73,7 @@ object Val{
 
 
   }
-  final class Obj(value0: Map[String, Obj.Member],
+  final class Obj(value0: collection.mutable.LinkedHashMap[String, Obj.Member],
                   triggerAsserts: Val.Obj => Unit,
                   `super`: Option[Obj]) extends Val{
 
@@ -101,8 +101,8 @@ object Val{
       for(t <- value0) output(t._1, t._2.visibility)
     }
 
-    def getVisibleKeys(preserveOrder: Boolean = false) = {
-      val mapping = if (preserveOrder) collection.mutable.LinkedHashMap.empty[String, Boolean] else collection.mutable.Map.empty[String, Boolean]
+    def getVisibleKeys(): mutable.LinkedHashMap[String, Boolean] = {
+      val mapping = collection.mutable.LinkedHashMap.empty[String, Boolean]
       foreachVisibleKey{ (k, sep) =>
         (mapping.get(k), sep) match{
           case (None, Visibility.Hidden) => mapping(k) = true
@@ -115,7 +115,7 @@ object Val{
       }
       mapping
     }
-    private[this] val valueCache = collection.mutable.Map.empty[Any, Val]
+    private[this] val valueCache = collection.mutable.LinkedHashMap.empty[Any, Val]
     def value(k: String,
               offset: Int,
               self: Obj = this)
