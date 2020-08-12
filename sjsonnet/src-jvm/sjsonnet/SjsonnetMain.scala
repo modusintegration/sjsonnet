@@ -75,10 +75,10 @@ object SjsonnetMain {
 
     result match{
       case Left(err) =>
-        System.err.println(err)
+        if (!err.isEmpty) System.err.println(err)
         1
       case Right(str) =>
-        System.out.println(str)
+        if (!str.isEmpty) System.out.println(str)
         0
     }
   }
@@ -175,11 +175,14 @@ object SjsonnetMain {
         config.outputFile match{
           case None => materialized.map(_.toString)
           case Some(f) =>
+            val filePath = os.FilePath(f) match{
+              case _: os.Path => os.Path(f).relativeTo(os.pwd)
+              case _ => os.RelPath(f)
+            }
             for{
               materializedStr <- materialized
-              _ <- writeFile(os.RelPath(f), materializedStr.toString)
+              _ <- writeFile(filePath, materializedStr.toString)
             } yield ""
-
         }
     }
   }
